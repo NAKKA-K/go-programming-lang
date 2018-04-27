@@ -18,6 +18,7 @@ func main() {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
+    # 同時書き込み防止のためにLockをかける
 	mu.Lock()
 	count++
 	mu.Unlock()
