@@ -1,0 +1,71 @@
+package main
+
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"image/gif"
+	"io"
+	"log"
+	"math"
+	"math/rand"
+	"net/http"
+	"strconv"
+	"sync"
+	"time"
+)
+
+// Mutexによる同時書き込み防止
+var mu sync.Mutex
+var count int
+
+var palette = []color.Color{color.Black, color.RGBA{0x00, 0xff, 0x00, 0xff}, color.RGBA{0xff, 0x00, 0x00, 0xff}}
+
+const (
+	blackIndex = 0
+	greenIndex = 1
+	redIndex   = 2
+)
+
+func main() {
+	http.HandleFunc("/", handler)
+	log.Fatal(http.ListenAndServe("localhost:8000", nil))
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	rand.Seed(time.Now().UTC().UnixNano())
+
+	// 発振器xが完了する周回の回数をURL引数から取得し、関数の引数に渡す
+	cycles, err := strconv.Atoi(r.URL.Query()["cycles"][0])
+	if err != nil {
+		lissajous(w, 5)
+	}
+	fmt.Printf("%v\n", cycles)
+	lissajous(w, float64(cycles))
+}
+
+func lissajous(out io.Writer, cycles float64) {
+	const (
+		res     = 0.001 // 回転の分解能
+		size    = 100   // 画像キャンバスは[-size..+size]の範囲を扱う
+		nframes = 64    // アニメーションフレーム数
+		delay   = 8     // 10ms単位でのフレーム間遅延
+	)
+
+	freq := rand.Float64() * 3.0 // 発振器yの相対周波数
+	anim := gif.GIF{LoopCount: nframes}
+	phase := 0.0 // 位相差
+	for i := 0; i < nframes; i++ {
+		rect := image.Rect(0, 0, 2*size+1, 2*size+1)
+		img := image.NewPaletted(rect, palette)
+		for t := 0.0; t < cycles*2*math.Pi; t += res {
+			x := math.Sin(t)
+			y := math.Sin(t*freq + phase)
+			img.SetColorIndex(size+int(x*size+0.5), size+int(y*size+0.5), uint8(t)%2+1)
+		}
+		phase += 0.1
+		anim.Delay = append(anim.Delay, delay)
+		anim.Image = append(anim.Image, img)
+	}
+	gif.EncodeAll(out, &anim) // エンコードエラーを無視
+}
