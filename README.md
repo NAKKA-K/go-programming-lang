@@ -1,2 +1,2 @@
 # go-programming-lang
-Programming language Go
+Programming language Go Book
