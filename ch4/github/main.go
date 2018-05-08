@@ -17,7 +17,7 @@ type IssuesSearchResult struct {
 }
 
 type Issue struct {
-	Numbew    int
+	Number    int
 	HTMLURL   string `json:"html_url"`
 	Title     string
 	State     string
